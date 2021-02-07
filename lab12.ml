@@ -70,8 +70,8 @@ let remember : string -> string =
                         memory := msg;
                         previous ;;
 
-(* An alternative is to move the `mem` variable outside the function
-   definition, as:
+(* An alternative is to move the `memory` variable outside the
+   function definition, as:
 
     let memory = ref "" ;;
 
@@ -80,7 +80,7 @@ let remember : string -> string =
       memory := msg;
       previous ;;
 
-   But this allows access to the contents of `mem` outside the
+   But this allows access to the contents of `memory` outside the
    `remember` function, which is a failure of the abstraction that
    `remember` is intended to implement. *)
 
@@ -138,8 +138,8 @@ let gensym : string -> string =
     let gensym : string -> string =
       let suffix = ref 0 in
       fun str -> let symbol = str ^ string_of_int !suffix in
-		 incr suffix;
-		 symbol ;;
+                 incr suffix;
+                 symbol ;;
 
    An alternative implementation performs the incrementation before
    the string formation, so that the return value need not be stored
@@ -220,57 +220,35 @@ mutable list and a second mutable list and, as a side effect, causes
 the first to become the appending of the two lists. Some questions to
 think about before you get started:
 
- o What is an appropriate return type for the `mappend` function? (You
-   can glean our intended answer from the examples below, but try to
-   think it through yourself first.
-#ifdef SOLN
+ 1. What is an appropriate return type for the `mappend` function?
+    (You can glean our intended answer from the examples below, but
+    try to think it through yourself first.
 
-      ANSWER: Since `mappend` is called for its side effect, `unit` is
-      the appropriate return type. An alternative would be to return
-      some indication as to whether the appending succeeded -- since
-      it could fail if the first argument is `Nil` -- perhaps as an
-      option type or boolean.
-#endif
+ 2. Why is there a restriction that the first list be non-empty?
 
- o Why is there a restriction that the first list be non-empty?
-#ifdef SOLN
-
-      ANSWER: The `mlist` type only allows tails of lists to be
-      mutated, so there is no way to mutate the empty list, and
-      therefore no way to append to it.
-#endif
-
- o What is the appropriate thing to do if `mappend` is called with an
-   empty mutable list as first argument?
-#ifdef SOLN
-
-      ANSWER: The return type of the function is `unit`, so there are
-      only two options: return `()` or raise an exception. The
-      latter is a better choice, since an empty first argument is
-      undoubtedly a sign of the code having gone wrong. We show both
-      implementations below.
-#endif
+ 3. What is the appropriate thing to do if `mappend` is called with an
+    empty mutable list as first argument?
 
 Examples of use:
 
-    # let m1 = mlist_of_list [1; 2; 3];;
+    # let m1 = mlist_of_list [1; 2; 3] ;;
     val m1 : int mlist =
       Cons (1, {contents = Cons (2, {contents = Cons (3, {contents = Nil})})})
 
-    # let m2 = mlist_of_list [4; 5; 6];;
+    # let m2 = mlist_of_list [4; 5; 6] ;;
     val m2 : int mlist =
       Cons (4, {contents = Cons (5, {contents = Cons (6, {contents = Nil})})})
 
-    # length m1;;
+    # length m1 ;;
     - : int = 3
 
-    # mappend m1 m2;;
+    # mappend m1 m2 ;;
     - : unit = ()
 
-    # length m1;;
+    # length m1 ;;
     - : int = 6
 
-    # m1;;
+    # m1 ;;
     - : int mlist =
     Cons (1,
      {contents =
@@ -282,22 +260,50 @@ Examples of use:
               {contents = Cons (5, {contents = Cons (6, {contents = Nil})})})})})})
 ....................................................................*)
 
+(* Answers to thought questions:
+
+ 1. What is an appropriate return type for the `mappend` function?
+    (You can glean our intended answer from the examples below, but
+    try to think it through yourself first.
+
+      ANSWER: Since `mappend` is called for its side effect, `unit` is
+      the appropriate return type. An alternative would be to return
+      some indication as to whether the appending succeeded -- since
+      it could fail if the first argument is `Nil` -- perhaps as an
+      option type or boolean.
+
+ 2. Why is there a restriction that the first list be non-empty?
+
+      ANSWER: The `mlist` type only allows tails of lists to be
+      mutated, so there is no way to mutate the empty list, and
+      therefore no way to append to it.
+
+ 3. What is the appropriate thing to do if `mappend` is called with an
+    empty mutable list as first argument?
+
+      ANSWER: The return type of the function is `unit`, so there are
+      only two options: return `()` or raise an exception. The
+      latter is a better choice, since an empty first argument is
+      undoubtedly a sign of the code having gone wrong. We show both
+      implementations below.
+ *)
+       
 let rec mappend (xs : 'a mlist) (ys : 'a mlist) : unit =
   match xs with
   | Nil -> ()
-  | Cons (_h, t) -> match !t with
-                    | Nil -> t := ys
-                    | Cons (_, _) as m -> mappend m ys ;;
+  | Cons (_hd, tl) -> match !tl with
+                    | Nil -> tl := ys
+                    | Cons (_, _) -> mappend !tl ys ;;
 
 (* An alternative that raises an exception when called
    inappropriately:
 
       let rec mappend (xs : 'a mlist) (ys : 'a mlist) : unit =
         match xs with
-        | Nil -> invalid_arg "empty first argument of mappend"
-        | Cons (_h, t) -> match !t with
-                          | Nil -> t := ys
-                          | Cons (_, _) as m -> mappend m ys ;;
+        | Nil -> invalid_arg "mappend: empty first argument"
+        | Cons (_hd, tl) -> match !tl with
+                          | Nil -> tl := ys
+                          | Cons (_, _) -> mappend !tl ys ;;
 
    The `invalid_arg` function is defined in the `Stdlib` module to
    raise an `Invalid_argument` exception, which is ideally suited for
@@ -372,13 +378,13 @@ the `to_string` function. (Read on below for an example of the use of
 the functor.)
 ....................................................................*)
 
-module MakeImpQueue (A : sig
-                           type t
-                           val to_string : t -> string
-                         end)
-                  : (IMP_QUEUE with type elt = A.t) =
+module MakeImpQueue (Elt : sig
+                             type t
+                             val to_string : t -> string
+                           end)
+                  : (IMP_QUEUE with type elt = Elt.t) =
   struct
-    type elt = A.t
+    type elt = Elt.t
     type mlist = Nil | Cons of elt * (mlist ref)
     type queue = {front: mlist ref ; rear: mlist ref}
 
@@ -406,7 +412,7 @@ module MakeImpQueue (A : sig
         match !mlst with
         | Nil -> "||"
         | Cons (h, t) ->
-           Printf.sprintf "%s -> %s" (A.to_string h) (to_string' t) in
+           Printf.sprintf "%s -> %s" (Elt.to_string h) (to_string' t) in
       to_string' q.front
       (* end of our solution *)
   end ;;
