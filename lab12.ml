@@ -44,7 +44,7 @@ let incr (n : int ref) : unit =
   n := !n + 1 ;;
 
 (* As it turns out, the `incr` function is provided as part of the
-   `Stdlib` module. Now you know how it was implemented. *)
+   `Stdlib` module. Now you know how it can be implemented. *)
 
 (*....................................................................
 Exercise 3: Write a function `remember` that returns the last string
@@ -58,7 +58,7 @@ the empty string.
     # remember "etaoin shrdlu" ;;
     - : string = "what was that again?"
 
-(This is probably the least functional function ever written!)
+(This is probably the least "functional" function ever written!)
 
 As usual, you shouldn't feel beholden to how the definition is
 introduced in the skeleton code below.
@@ -102,7 +102,7 @@ OCaml.)
 
 The `gensym` function takes a string and generates a new string by
 suffixing a unique number, which is initially 0 but is incremented
-each time gensym is called.
+each time `gensym` is called.
 
 For example,
 
@@ -208,11 +208,23 @@ let rec length (mlst : 'a mlist) : int =
 
 (*....................................................................
 Exercise 7: What is the time complexity of the `length` function in
-O() notation in terms of the length of its list argument?
+terms of the length of its list argument? Provide the tightest
+complexity class, recorded using the technique from lab 10.
 ....................................................................*)
 
+type complexity =
+  | Unanswered
+  | Constant
+  | Logarithmic
+  | Linear
+  | LogLinear
+  | Quadratic
+  | Cubic
+  | Exponential ;;
+  
 (* ANSWER: The `length` function is linear in the length of its
    argument: O(n). *)
+let length_complexity : complexity = Linear
 
 (*....................................................................
 Exercise 8: Now, define a function `mappend` that takes a *non-empty*
@@ -222,7 +234,7 @@ think about before you get started:
 
  1. What is an appropriate return type for the `mappend` function?
     (You can glean our intended answer from the examples below, but
-    try to think it through yourself first.
+    try to think it through yourself first.)
 
  2. Why is there a restriction that the first list be non-empty?
 
@@ -233,11 +245,13 @@ Examples of use:
 
     # let m1 = mlist_of_list [1; 2; 3] ;;
     val m1 : int mlist =
-      Cons (1, {contents = Cons (2, {contents = Cons (3, {contents = Nil})})})
+      Cons (1, 
+       {contents = Cons (2, {contents = Cons (3, {contents = Nil})})})
 
     # let m2 = mlist_of_list [4; 5; 6] ;;
     val m2 : int mlist =
-      Cons (4, {contents = Cons (5, {contents = Cons (6, {contents = Nil})})})
+      Cons (4,
+       {contents = Cons (5, {contents = Cons (6, {contents = Nil})})})
 
     # length m1 ;;
     - : int = 3
@@ -257,7 +271,9 @@ Examples of use:
           Cons (3,
            {contents =
              Cons (4,
-              {contents = Cons (5, {contents = Cons (6, {contents = Nil})})})})})})
+              {contents = 
+                Cons (5,
+                 {contents = Cons (6, {contents = Nil})})})})})})
 ....................................................................*)
 
 (* Answers to thought questions:
@@ -282,30 +298,20 @@ Examples of use:
     empty mutable list as first argument?
 
       ANSWER: The return type of the function is `unit`, so there are
-      only two options: return `()` or raise an exception. The
-      latter is a better choice, since an empty first argument is
-      undoubtedly a sign of the code having gone wrong. We show both
-      implementations below.
+      only two options: return `()` or raise an exception. The latter
+      is a better choice, since an empty first argument is undoubtedly
+      a sign of the code having gone wrong. We use the latter approach
+      below.
  *)
        
 let rec mappend (xs : 'a mlist) (ys : 'a mlist) : unit =
   match xs with
-  | Nil -> ()
+  | Nil -> invalid_arg "mappend: empty first argument"
   | Cons (_hd, tl) -> match !tl with
-                    | Nil -> tl := ys
-                    | Cons (_, _) -> mappend !tl ys ;;
+		    | Nil -> tl := ys
+		    | Cons (_, _) -> mappend !tl ys ;;
 
-(* An alternative that raises an exception when called
-   inappropriately:
-
-      let rec mappend (xs : 'a mlist) (ys : 'a mlist) : unit =
-        match xs with
-        | Nil -> invalid_arg "mappend: empty first argument"
-        | Cons (_hd, tl) -> match !tl with
-                          | Nil -> tl := ys
-                          | Cons (_, _) -> mappend !tl ys ;;
-
-   The `invalid_arg` function is defined in the `Stdlib` module to
+(* The `invalid_arg` function is defined in the `Stdlib` module to
    raise an `Invalid_argument` exception, which is ideally suited for
    this situation. Another option is to raise a `Failure` exception
    (also defined in `Stdlib`, perhaps using the `failwith` function),
@@ -386,7 +392,7 @@ module MakeImpQueue (Elt : sig
   struct
     type elt = Elt.t
     type mlist = Nil | Cons of elt * (mlist ref)
-    type queue = {front: mlist ref ; rear: mlist ref}
+    type queue = {front: mlist ref; rear: mlist ref}
 
     let empty () = {front = ref Nil; rear = ref Nil}
     let enq x q =
@@ -411,8 +417,8 @@ module MakeImpQueue (Elt : sig
       let rec to_string' mlst =
         match !mlst with
         | Nil -> "||"
-        | Cons (h, t) ->
-           Printf.sprintf "%s -> %s" (Elt.to_string h) (to_string' t) in
+        | Cons (hd, tl) ->
+           Printf.sprintf "%s -> %s" (Elt.to_string hd) (to_string' tl) in
       to_string' q.front
       (* end of our solution *)
   end ;;
